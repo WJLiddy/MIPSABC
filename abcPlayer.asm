@@ -3,6 +3,10 @@
 .text	
 .globl	main
 main:
+
+	
+ 	
+ 	
 	jal openfile	# open the file
 	jal readheader	# encodes the key, gets readchar ready to read the first note.
 	jal playnotes 	# read and play notes from readchar.
@@ -113,17 +117,99 @@ playnotes:
 	# End when you run out of notes to play.
 	jr $ra
 	
-# REGISTER INPUTS none
+# REGISTER INPUTS $a0 ID
 # REGISTER OUTPUTS none
 # TODO William play the right note based the pitch and key. Eventually add length too.
 playnote:
-	#http://newt.phys.unsw.edu.au/jw/notes.html
-   	li $v0, 31  		# syscall to play midi  
-    	li $a0, 60 	     	# set midi pitch to c
-    	li $a1, 100		# set midi duration to 1000 ms (1 second)  
+	# a0 is the midi note name
+	# s1 is the enconding (A-G) (S-BIT)
+
+	# t0 will hold the sharp/flat bit.
+	andi $t0, $s1, 1 	
+	# t1 now stores the key encoding
+	srl $t1, $s1, 1
+	# t2 stores an octave, for moduluo
+	li $t2, 12
+	# now i need to get the note mod 12
+	div $a0, $t2
+	# note mod 12 in t3
+	mfhi $t3
+	
+	# At this point: Here's what' in t1
+	# MIPS BIT # ...  6  5  4  3  2  1  0
+	# MEANING ......  A  B  C  D  E  F  G 
+	
+	# t3 conversion chart
+	# C:0 D:2 E:4 F:5 G=7 A=9 B=11
+	# 2^4 2^3 2^2 2^1 2^0 2^6 2^5
+	#need to convert t3 to this style.
+	li $t4, 0
+	beq $t4, $t3, convertC
+	li $t4, 2
+	beq $t4, $t3, convertD
+	li $t4, 4
+	beq $t4, $t3, convertE
+	li $t4, 5
+	beq $t4, $t3, convertF
+	li $t4, 7
+	beq $t4, $t3, convertG
+	li $t4, 9
+	beq $t4, $t3, convertA	
+	li $t4, 11
+	beq $t4, $t3, convertB
+	
+	convertG:
+	li $t5 , 1 
+	j convertDone
+	convertF:
+	li $t5 , 2 
+	j convertDone
+	convertE:
+	li $t5 , 4 
+	j convertDone
+	convertD:
+	li $t5 , 8 
+	j convertDone
+	convertC:
+	li $t5 , 16 
+	j convertDone
+	convertB:
+	li $t5 , 32 
+	j convertDone
+	convertA:
+	li $t5 , 64 
+	
+	convertDone:
+	
+	# and the note with the key
+	and $t6, $t5, $t1	
+	# did we get zero? then no note change! jump!
+	beqz $t6, playnotewkey		
+	
+	# The key hit us!! flat or not?
+	beqz $t0, flatmode
+	
+	addi $a0, $a0, 1
+	j playnotewkey
+	
+	flatmode:
+	subi $a0, $a0, 1
+	j playnotewkey
+	
+	
+	
+	playnotewkey:
+	
+   	li $v0, 31 		# syscall to play midi  
+    	li $a1, 700		# set midi duration to 100 ms (1 second)  
     	li $a2, 0		# set midi instrument to piano d
 	li $a3, 127		# TURN IT UP TO 11
     	syscall
+    	
+    	li $v0, 32
+    	li $a0, 600
+    	syscall	
+    	
 	jr $ra 
 	
 # Quits the progam.

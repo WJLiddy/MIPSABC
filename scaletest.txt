@@ -1,0 +1,55 @@
+# C Major (no flats or sharps)
+	li $s1 , 0
+ 	li $a0 , 60
+ 	jal playnote
+ 	li $a0 , 62
+ 	jal playnote
+	li $a0 , 64
+ 	jal playnote
+ 	li $a0 , 65
+ 	jal playnote
+ 	li $a0 , 67
+ 	jal playnote
+ 	li $a0 , 69
+ 	jal playnote
+ 	li $a0 , 71
+ 	jal playnote
+ 	li $a0 , 72
+ 	jal playnote
+ 	
+ 	# C Minor (11001000)
+	li $s1 , 200
+ 	li $a0 , 60
+ 	jal playnote
+ 	li $a0 , 62
+ 	jal playnote
+	li $a0 , 64
+ 	jal playnote
+ 	li $a0 , 65
+ 	jal playnote
+ 	li $a0 , 67
+ 	jal playnote
+ 	li $a0 , 69
+ 	jal playnote
+ 	li $a0 , 71
+ 	jal playnote
+ 	li $a0 , 72
+ 	jal playnote
+ 	
+ 	
+ 	# Make all notes sharp except c (hack-y blues scale) (11011111)
+ 	li $s1, 223
+ 	li $a0 , 60
+ 	jal playnote
+ 	li $a0 , 62
+ 	jal playnote
+	li $a0 , 64
+ 	jal playnote
+ 	li $a0 , 65
+ 	jal playnote
+ 	li $a0 , 66
+ 	jal playnote
+ 	li $a0 , 69
+ 	jal playnote
+ 	li $a0 , 71
+ 	jal playnote
