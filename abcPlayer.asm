@@ -4,25 +4,12 @@
 .globl	main
 main:
 
-	
- 	
- 	
 	jal openfile	# open the file
 	jal readheader	# encodes the key, gets readchar ready to read the first note.
-	jal playnotes 	# read and play notes from readchar.
-	jal closefile	# close the file.
-	jal exit	# exit.
+	jal playnotes 	# loops until a '|' is found. then breaks.
 
 
 # SAVED REGISTER DEFINITIONS
-
-# Keep in mind, MIPS register conventions are:
-# v0-v1 return value registers:	Use this to output data from procedures.
-# a0-a3 argument registers: 	Use this to input data to procedures.
-# t0-t9 general registers:	You can do whatever you want with these. 
-# s0-s8 saved registers:	Special values we should save.
-# And be sure to use the stack if you need more registers.
-
 # s0 
 # This is the address, or file descriptor, of the loaded abc file. 
 
@@ -39,25 +26,28 @@ main:
 # Another Example, D flat major. B E A D G all flat.
 # So Encode $s1 as 1 1 0 1 1 0 1 0
 
-# s2 is the Note Length. It is denoted by L: in the file. 
-# I can't think of a good way to manipulate this so ignore for now.
+# s2 is the base note length. It is denoted by L: in the file. 
+# convert to milliseconds please.
+
+# s7 is used to save a note length when we read rhythms. do not bother with right now.
 
 # Opens ABC file specified by user.
-# REGISTER INPUTS none
 # REGISTER OUTPUTS file descriptior at $s0
 openfile:
 	
+	# Ask for file name
 	li $v0, 4
 	la $a0, plzenter
     	syscall
-
+    	
+	# Get file string.
   	li $v0, 8
    	la $a0, file
     	li $a1, 21
     	syscall
     	
-    	#Don't know how this works but it does. Review later. 
-    	nameClean:
+    	# Don't know how this works but it does. Converts file input to something the machine can read.
+    	# Shamelessly stolen from google
    	li $t0, 0       #loop counter
     	li $t1, 21      #loop end
 	clean:
@@ -70,6 +60,7 @@ openfile:
 	j clean
 	L5:
     	
+    	# Opens up the file and saves descriptor
 	li	$v0, 13		# Open File Syscall
 	la	$a0, file	# Load File Name
 	li	$a1, 0		# Read-only Flag
@@ -79,10 +70,7 @@ openfile:
 	blt	$v0, 0, err	# Goto Error
 	jr $ra 
 
-# Reads a character from the file. 
-# REGISTER INPUTS file descriptor at $s0
-# REGISTER OUTPUTS read value at $v0 
-
+# calls if the file does't load properly
 err:
 	li $v0, 4
 	la $a0, fileerr
@@ -90,6 +78,9 @@ err:
     	j exit
     	
 
+# Reads a character from the file. The char is output in $v0. As a shortcut, this char be accessed as an int by using
+#	li $t0, 0
+#	lbu $t0, buffer($t0)
 readchar:
 	li	$v0, 14		# Read File Syscall
 	move	$a0, $s0	# Load File Descriptor
@@ -127,29 +118,21 @@ closefile:
 # REGISTER INPUTS none
 # REGISTER OUTPUTS none
 playnotes:
-	# go for a basic implementation here.
-	# For each note (letter) in the file, convert the pitch  denotated by that letter to a number.
-	# put that number in $a0 and call playnote.
-	# You can read this for more info on notes:
-	# http://trillian.mit.edu/~jc/music/abc/doc/ABCtut_Notes.html
-	# Also we encode like this
-	# http://newt.phys.unsw.edu.au/jw/notes.html
 
+	#ignore for now.
 	noteplayed:
 
 	jal readchar
-	jal qprint
-			
+		
+	# convert read char to an int	
 	li $t0, 0
 	lbu $t0, buffer($t0)
 
-	# Print Data
-	li	$v0, 1		# Print int Syscall
-	move	$a0, $t0	# Load Contents String
-	syscall
-		
+
+	#If it's a pipe exit.	
+	li $t1, '|'
+	beq $t0, $t1, exit
 	
-	#ascii encoding of "a"
 	li $t1, 'a'
 	beq $t0, $t1, lowA
 	li $t1, 'b'
@@ -179,9 +162,9 @@ playnotes:
 	li $t1, 'G'
 	beq $t0, $t1, hiG
 
+	#TODO throw error, don't skip space
 	j noteplayed
 		
-	#TODO - Throw error
 	lowA:
 	li $a0, 57
 	jal playnote
@@ -239,11 +222,6 @@ playnotes:
 	li $a0, 79
 	jal playnote
 	j noteplayed
-	
-	
-
-	# End when you run out of notes to play.
-	jr $ra
 	
 # REGISTER INPUTS $a0 ID
 # REGISTER OUTPUTS none
@@ -345,6 +323,7 @@ playnote:
 # REGISTER INPUTS none
 # REGISTER OUTPUTS none
 exit:
+	jal closefile
 	li	$v0,10	
 	syscall
 
