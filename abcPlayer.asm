@@ -8,6 +8,11 @@ main:
  	
  	
 	jal openfile	# open the file
+	
+	## TEST ONLY
+	jal readchar
+	jal qprint
+	
 	jal readheader	# encodes the key, gets readchar ready to read the first note.
 	jal playnotes 	# read and play notes from readchar.
 	jal closefile	# close the file.
@@ -45,20 +50,51 @@ main:
 # Opens ABC file specified by user.
 # REGISTER INPUTS none
 # REGISTER OUTPUTS file descriptior at $s0
-# Daniel TODO have the user type in a filepath instead of loading the file from .data (at bottom of program)
 openfile:
+	
+	li $v0, 4
+	la $a0, plzenter
+    	syscall
+
+  	li $v0, 8
+   	la $a0, file
+    	li $a1, 21
+    	syscall
+    	
+    	#Don't know how this works but it does. Review later. 
+    	nameClean:
+   	li $t0, 0       #loop counter
+    	li $t1, 21      #loop end
+	clean:
+    	beq $t0, $t1, L5
+    	lb $t3, file($t0)
+    	bne $t3, 0x0a, L6
+    	sb $zero, file($t0)
+    	L6:
+    	addi $t0, $t0, 1
+	j clean
+	L5:
+    	
 	li	$v0, 13		# Open File Syscall
 	la	$a0, file	# Load File Name
 	li	$a1, 0		# Read-only Flag
 	li	$a2, 0		# (ignored)
 	syscall
 	move	$s0, $v0	# Save File Descriptor
-	#blt	$v0, 0, err	# Goto Error
+	blt	$v0, 0, err	# Goto Error
 	jr $ra 
 
 # Reads a character from the file. 
 # REGISTER INPUTS file descriptor at $s0
 # REGISTER OUTPUTS read value at $v0 
+
+err:
+	li $v0, 4
+	la $a0, fileerr
+    	syscall
+    	j exit
+    	
+
 readchar:
 	li	$v0, 14		# Read File Syscall
 	move	$a0, $s0	# Load File Descriptor
@@ -219,10 +255,12 @@ exit:
 	li	$v0,10	
 	syscall
 
-
 # Start .data segment (data!)
 	.data
-file:	.asciiz	"C:\\ABC Project\\sample.txt"
+file:	.asciiz	"ABC Project\\sample.txt"
+fileerr:.asciiz	"File not found"
+plzenter:.asciiz	"Enter the name of the ABC file \n"
+#file:	.asciiz ""
 cont: 	.ascii "\nqprint : " 
 buffer: .space 1024 
 newline:.asciiz	"\n"
