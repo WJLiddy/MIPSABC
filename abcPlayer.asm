@@ -8,11 +8,6 @@ main:
  	
  	
 	jal openfile	# open the file
-	
-	## TEST ONLY
-	jal readchar
-	jal qprint
-	
 	jal readheader	# encodes the key, gets readchar ready to read the first note.
 	jal playnotes 	# read and play notes from readchar.
 	jal closefile	# close the file.
@@ -131,7 +126,6 @@ closefile:
 
 # REGISTER INPUTS none
 # REGISTER OUTPUTS none
-# TODO - Juheena
 playnotes:
 	# go for a basic implementation here.
 	# For each note (letter) in the file, convert the pitch  denotated by that letter to a number.
@@ -140,15 +134,113 @@ playnotes:
 	# http://trillian.mit.edu/~jc/music/abc/doc/ABCtut_Notes.html
 	# Also we encode like this
 	# http://newt.phys.unsw.edu.au/jw/notes.html
-	# For now, please encode the notes like this:
-	# a 57	A 69
-	# b 59	B 71
-	# c 60	C 72
-	# d 62	D 74
-	# e 64	E 76
-	# f 65	F 77
-	# g 67	G 79
-	# Ignore numbers and | for now.
+
+	noteplayed:
+
+	jal readchar
+	jal qprint
+			
+	li $t0, 0
+	lbu $t0, buffer($t0)
+
+	# Print Data
+	li	$v0, 1		# Print int Syscall
+	move	$a0, $t0	# Load Contents String
+	syscall
+		
+	
+	#ascii encoding of "a"
+	li $t1, 'a'
+	beq $t0, $t1, lowA
+	li $t1, 'b'
+	beq $t0, $t1, lowB
+	li $t1, 'c'
+	beq $t0, $t1, lowC
+	li $t1, 'd'
+	beq $t0, $t1, lowD
+	li $t1, 'e'
+	beq $t0, $t1, lowE
+	li $t1, 'f'
+	beq $t0, $t1, lowF
+	li $t1, 'g'
+	beq $t0, $t1, lowG
+	li $t1, 'A'
+	beq $t0, $t1, hiA
+	li $t1, 'B'
+	beq $t0, $t1, hiB
+	li $t1, 'C'
+	beq $t0, $t1, hiC
+	li $t1, 'D'
+	beq $t0, $t1, hiD
+	li $t1, 'E'
+	beq $t0, $t1, hiE
+	li $t1, 'F'
+	beq $t0, $t1, hiF
+	li $t1, 'G'
+	beq $t0, $t1, hiG
+
+	j noteplayed
+		
+	#TODO - Throw error
+	lowA:
+	li $a0, 57
+	jal playnote
+	j noteplayed
+	lowB:
+	li $a0, 59
+	jal playnote
+	j noteplayed
+	lowC:
+	li $a0, 60
+	jal playnote
+	j noteplayed
+	lowD:
+	li $a0, 62
+	jal playnote
+	j noteplayed
+	lowE:
+	li $a0, 64
+	jal playnote
+	j noteplayed
+	lowF:
+	li $a0, 65
+	jal playnote
+	j noteplayed
+	lowG:
+	li $a0, 67
+	jal playnote
+	j noteplayed
+	
+	hiA:
+	li $a0, 69
+	jal playnote
+	j noteplayed
+	hiB:
+	li $a0, 71
+	jal playnote
+	j noteplayed
+	hiC:
+	li $a0, 72
+	jal playnote
+	j noteplayed
+	hiD:
+	li $a0, 74
+	jal playnote
+	j noteplayed
+	hiE:
+	li $a0, 76
+	jal playnote
+	j noteplayed
+	hiF:
+	li $a0, 77
+	jal playnote
+	j noteplayed
+	hiG:
+	li $a0, 79
+	jal playnote
+	j noteplayed
+	
+	
 
 	# End when you run out of notes to play.
 	jr $ra
@@ -237,13 +329,14 @@ playnote:
 	playnotewkey:
 	
    	li $v0, 31 		# syscall to play midi  
-    	li $a1, 700		# set midi duration to 100 ms (1 second)  
-    	li $a2, 0		# set midi instrument to piano d
+    	li $a1, 300		# set midi duration to 100 ms (1 second)  
+    	li $a2, 12		# set midi instrument to piano d
 	li $a3, 127		# TURN IT UP TO 11
     	syscall
+
     	
     	li $v0, 32
-    	li $a0, 600
+    	li $a0, 250
     	syscall	
     	
 	jr $ra 
