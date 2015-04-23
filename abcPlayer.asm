@@ -87,6 +87,7 @@ readchar:
 	la	$a1, buffer	# Load Buffer Address
 	li	$a2, 1	# Buffer Size
 	syscall
+	la $a0, buffer
 	jr $ra 
 
 # REGISTER INPUTS file desciptor at $s0
@@ -97,9 +98,6 @@ readheader:
 	# Encode the header into $s1 using the method described above.
 	# When the header ends and the notes start, (singified by |) end the routine.
 	jal readchar		#Read character
-	la $a0, buffer
-	beq $a0, 0, closefile 	#Check for valid char read
-	blt $a0, 0, err 
 
 	li $t0, 75			#K
 	lb $t1, ($a0)
@@ -510,7 +508,7 @@ exit:
 
 # Start .data segment (data!)
 	.data
-file:	.asciiz	"ABC Project\\sample.txt"
+file:	.asciiz	"sample.txt"
 fileerr:.asciiz	"File not found"
 plzenter:.asciiz	"Enter the name of the ABC file \n"
 #file:	.asciiz ""
