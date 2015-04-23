@@ -96,7 +96,188 @@ readheader:
 	# Use readchar and extract the key from the header. It is denoted by K:
 	# Encode the header into $s1 using the method described above.
 	# When the header ends and the notes start, (singified by |) end the routine.
-	jr $ra
+	jal readchar		#Read character
+	la $a0, buffer
+	beq $a0, 0, closefile 	#Check for valid char read
+	blt $a0, 0, err 
+
+	li $t0, 75			#K
+	lb $t1, ($a0)
+	bne $t1, $t0, readheader	#If we haven't K yet, read again: 75
+	jal readchar			#after reading K, read next char
+	li $t0, 58			#:
+	lb $t1, ($a0)
+	bne $t1, $t0, readheader	#if we just encountered a K, not K: as in the key code, keep looking: 58
+	
+	#at this point we are in the key code section: encountered K:
+	jal readchar #should contain char code for key. check for space 
+	lb $t4, 0($a0) #t4 holds key code
+	##########################################if space, increment 1 more time
+	##########################################if flat/b, include in key code
+	
+	jal readchar 	#if 'm' then minor
+	lb $t1, 0($a0)
+	li $t0, 109 #'m'
+	seq $t3, $t2, $t1 	#t3 contains if minor or not
+	mul $t3, $t1, $t3	#if minor: t3 stores m decimal val, else 0
+	add $t4, $t4, $t3	#add this val into t4: holds adjusted key val now
+	
+	#should collect time signature info here
+
+	j setkey
+	
+#sharps		sum of symbols	ABCDEFG
+#C/Am:		67,174		00000001 
+#G/Em: F	71,178		00000101
+#D/Bm: FC	68,175		00100101
+#A/F#m: FCG	65,214		00100111
+#E/C#m: FCGD	69,211		00110111
+#B/G#m: FCGDA	66,215		10110111
+#F#/D#m: FCGDAE	105,212		10111111
+#C#/A#m: FCGDAEB102,209 	11111111
+#flats
+#F/Dm: B	70,177		01000000
+#Bb/Gm: BE	164,180		01001000
+#Eb/Cm: BEA	167,176		11001000
+#Ab/Fm: BEAD	163,179		11011000
+#Db/Bbm: BEADG	166,273		11011010
+#Gb/Ebm: BEADGC	169,276		11111010
+#Cb/Abm: BEADGCF165,272		11111110
+	
+setkey: #t4 contains keycode, set s1 based on value
+	#C, Am:
+	li $t0, 67
+	beq $t4, $t0, C
+	li $t0, 174
+	beq $t4, $t0, C
+	#G, Em:
+	li $t0, 71
+	beq $t4, $t0, G
+	li $t0, 178
+	beq $t4, $t0, G
+	#D/Bm
+	li $t0, 68
+	beq $t4, $t0, D
+	li $t0, 175
+	beq $t4, $t0, D
+	#A, F#m
+	li $t0, 65
+	beq $t4, $t0, A
+	li $t0, 214
+	beq $t4, $t0, A
+	#E, C#m
+	li $t0, 69 
+	beq $t4, $t0, E
+	li $t0, 211
+	beq $t4, $t0, E
+	#B, G#m
+	li $t0, 66
+	beq $t4, $t0, B
+	li $t0, 215
+	beq $t4, $t0, B
+	#F#, D#m
+	li $t0, 105
+	beq $t4, $t0, Fs
+	li $t0, 212
+	beq $t4, $t0, Fs
+	#C#, A#m
+	li $t0, 102
+	beq $t4, $t0, Cs
+	li $t0, 209
+	beq $t4, $t0, Cs
+	#F, Dm
+	li $t0, 70
+	beq $t4, $t0, F
+	li $t0, 177
+	beq $t4, $t0, F
+	#Bb, Gm
+	li $t0, 164
+	beq $t4, $t0, Bb
+	li $t0, 180
+	beq $t4, $t0, Bb
+	#Eb, Cm
+	li $t0, 167
+	beq $t4, $t0, Eb
+	li $t0, 176
+	beq $t4, $t0, Eb
+	#Ab, Fm
+	li $t0, 163
+	beq $t4, $t0, Ab
+	li $t0, 179
+	beq $t4, $t0, Ab
+	#Db, Bbm
+	li $t0, 166
+	beq $t4, $t0, Db
+	li $t0, 273
+	beq $t4, $t0, Db
+	#Gb, Ebm
+	li $t0, 169
+	beq $t4, $t0, Gb
+	li $t0, 276
+	beq $t4, $t0, Gb
+	#Cb, Abm
+	li $t0, 165
+	beq $t4, $t0, Cb 
+	li $t0, 272
+	beq $t4, $t0, Cb
+	#sharps
+	C: 
+	addi $s1, $zero, 0x00000000
+	j readthrough
+	G: 
+	addi $s1, $zero, 0x00000101
+	j readthrough
+	D:
+	addi $s1, $zero, 0x00100101
+	j readthrough
+	A:
+	addi $s1, $zero, 0x00100111
+	j readthrough
+	E:
+	addi $s1, $zero, 0x00110111
+	j readthrough
+	B:
+	addi $s1, $zero, 0x10110111
+	j readthrough
+	Fs:
+	addi $s1, $zero, 0x10111111
+	j readthrough
+	Cs:
+	addi $s1, $zero, 0x11111111
+	j readthrough
+	
+	#flats
+	F:
+	addi $s1, $zero, 0x01000000
+	j readthrough
+	Bb:
+	addi $s1, $zero, 0x01001000
+	j readthrough
+	Eb:
+	addi $s1, $zero, 0x11001000
+	j readthrough
+	Ab:
+	addi $s1, $zero, 0x11011000
+	j readthrough
+	Db:
+	addi $s1, $zero, 0x11011010
+	j readthrough
+	Gb:
+	addi $s1, $zero, 0x11111010
+	j readthrough
+	Cb:
+	addi $s1, $zero, 0x11111110
+	j readthrough
+	
+	
+readthrough:
+	li $t0, 124 #'|'
+	jal readchar 	
+	lb $t1, 0($a0)
+	bne $t0, $t1, readthrough #break & continue after reaching |
+	j playnotes #fix so that links aren't broken
+	#jr $ra
+
 
 # Quick and dirty way to print value after readchar
 qprint:
