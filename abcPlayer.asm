@@ -5,7 +5,7 @@
 main:
 
 	jal openfile	# open the file
-	jal readheader	# encodes the key, gets readchar ready to read the first note.
+#	jal readheader	# encodes the key, gets readchar ready to read the first note.
 	jal playnotes 	# loops until a '|' is found. then breaks.
 
 
@@ -87,7 +87,9 @@ readchar:
 	la	$a1, buffer	# Load Buffer Address
 	li	$a2, 1	# Buffer Size
 	syscall
-	la $a0, buffer
+	# convert to an int	
+	li $t0, 0
+	lbu $v0, buffer($t0)
 	jr $ra 
 
 # REGISTER INPUTS file desciptor at $s0
@@ -302,11 +304,8 @@ playnotes:
 	noteplayed:
 
 	jal readchar
-		
-	# convert read char to an int	
-	li $t0, 0
-	lbu $t0, buffer($t0)
-
+	move $t0, $v0
+	
 
 	#If it's a pipe exit.	
 	li $t1, '|'
