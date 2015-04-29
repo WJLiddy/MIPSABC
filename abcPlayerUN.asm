@@ -36,7 +36,7 @@ main:
 
 allocnotequeue:
 	# 
-	li $a0, 100000
+	li $a0, 1024
 	li $v0, 9
 	syscall
 	move $s3, $v0
@@ -310,6 +310,10 @@ closefile:
 	syscall
 	jr $ra  
 
+#play the notes in a note list
+#argument $a0, first item in note list
+
+
 # REGISTER INPUTS none
 # REGISTER OUTPUTS none
 playnotes:
@@ -499,53 +503,29 @@ playnote:
 	#TODO - Store note, not play it
 	playnotewkey:
 
-
 	# Note Storage.
 	# Note name
 	sw  $a0, ($s4)
 	add $s4, $s4, 4
 	# Note Duration
-	li  $a1, 300
 	sw  $a1, ($s4)
 	add $s4, $s4, 4
 	
 	add $s5, $s5, 1
+	
     	
 	jr $ra 
-	
-playallqueue:
-	move $t0, $a0  #temp register $t0, note pointer
-	move $t3, $a1  #length of note list
-	
-	playnoteloop:
-		beq  $t3, $zero, end    #end loop when total number of notes left is 0
-		lw   $t1, ($t0) 	#load name of current note into $t1
-		addi $t0, $t0, 4 	#increament note pointer to note duration
-		lw   $t2, ($t0)		#load duraetion current note into $t2
-		subi $t3, $t3, 1	#decremnent length of note list
-		addi $t0, $t0, 4	#increment note pointer to next name of note
-		li   $v0, 33  		#syscall 33 to play note synchronous
-		
-		move $a0, $t1		#argument $a0 -> note name
-		move $a1, $t2 		#argument $a1 -> note duration
-		li   $a2, 12		# set midi instrument to piano 
-		li   $a3, 127		# TURN IT UP TO 11
-		syscall		
-		j    playnoteloop
-		
-	end:	
-		jr $ra 
 	
 # Quits the progam.
 # REGISTER INPUTS none
 # REGISTER OUTPUTS none
 exit:
+
+	move	$a0, $s3
+	move	$a1, $s5 
+	jal 	playallqueue
+	
 	jal closefile
-	
-	move $a0, $s3
-	move $a1, $s5	
-	jal playallqueue
-	
 	li	$v0,10	
 	syscall
 
