@@ -31,15 +31,17 @@ main:
 # convert to milliseconds please.
 
 # s3 is the memory start
-# s4 is the memory end
+# s4 is the memory pointer
+# s5 is the note count
 
 allocnotequeue:
-	# Arbitrary value, change later.
+	# 
 	li $a0, 1024
 	li $v0, 9
 	syscall
 	move $s3, $v0
 	move $s4, $v0
+	li $s5, 0
 	jr $ra
 # s7 is used to save a note length when we read rhythms. do not bother with right now.
 
@@ -503,15 +505,17 @@ playnote:
 	li $a3, 127		# TURN IT UP TO 11
     	syscall
 
-	#Note Storage.
-	#Note name
+	# Note Storage.
+	# Note name
 	sw  $a0, ($s4)
 	add $s4, $s4, 4
-	#Note Duration
+	# Note Duration
 	sw  $a1, ($s4)
 	add $s4, $s4, 4
 	
-    	
+	add $s5, $s5, 1
+	
+	# Waits
     	li $v0, 32
     	li $a0, 250
     	syscall	
