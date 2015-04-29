@@ -4,6 +4,7 @@
 .globl	main
 main:
 
+	jal allocnotequeue
 	jal openfile	# open the file
 #	jal readheader	# encodes the key, gets readchar ready to read the first note.
 	jal playnotes 	# loops until a '|' is found. then breaks.
@@ -29,6 +30,17 @@ main:
 # s2 is the base note length. It is denoted by L: in the file. 
 # convert to milliseconds please.
 
+# s3 is the memory start
+# s4 is the memory end
+
+allocnotequeue:
+	# Arbitrary value, change later.
+	li $a0, 1024
+	li $v0, 9
+	syscall
+	move $s3, $v0
+	move $s4, $v0
+	jr $ra
 # s7 is used to save a note length when we read rhythms. do not bother with right now.
 
 # Opens ABC file specified by user.
@@ -482,6 +494,7 @@ playnote:
 	
 	
 	
+	#TODO - Store note, not play it
 	playnotewkey:
 	
    	li $v0, 31 		# syscall to play midi  
@@ -490,6 +503,14 @@ playnote:
 	li $a3, 127		# TURN IT UP TO 11
     	syscall
 
+	#Note Storage.
+	#Note name
+	sw  $a0, ($s4)
+	add $s4, $s4, 4
+	#Note Duration
+	sw  $a1, ($s4)
+	add $s4, $s4, 4
+	
     	
     	li $v0, 32
     	li $a0, 250
