@@ -6,7 +6,7 @@ main:
 
 	jal allocnotequeue
 	jal openfile	# open the file
-#	jal readheader	# encodes the key, gets readchar ready to read the first note.
+	jal readheader	# encodes the key, gets readchar ready to read the first note.
 	jal playnotes 	# loops until a '|' is found. then breaks.
 
 
@@ -114,31 +114,145 @@ readheader:
 	# Encode the header into $s1 using the method described above.
 	# When the header ends and the notes start, (singified by |) end the routine.
 	jal readchar		#Read character
+	move $t1, $v0
+	li $t0, 'K'			#K
+	beq $t1, $t0, key	#If we find K 
+	li $t3, 'L' 			#L
+	beq $t1, $t3, tempo	#if we find L
+	j readheader	#If we haven't hit K or L yet, read again
 
-	li $t0, 75			#K
-	lb $t1, ($a0)
-	bne $t1, $t0, readheader	#If we haven't K yet, read again: 75
+key: #initial read
+	li $t0, 'K'			#K
 	jal readchar			#after reading K, read next char
-	li $t0, 58			#:
-	lb $t1, ($a0)
+	li $t0, ':'			#:
+	move $t1, $v0
 	bne $t1, $t0, readheader	#if we just encountered a K, not K: as in the key code, keep looking: 58
 	
 	#at this point we are in the key code section: encountered K:
 	jal readchar #should contain char code for key. check for space 
-	lb $t4, 0($a0) #t4 holds key code
-	##########################################if space, increment 1 more time
-	##########################################if flat/b, include in key code
-	
-	jal readchar 	#if 'm' then minor
-	lb $t1, 0($a0)
+	move $t4, $v0 #t4 holds key code
+	jal readchar 	#finish reading key
+	move $t1, $v0
 	li $t0, 109 #'m'
 	seq $t3, $t2, $t1 	#t3 contains if minor or not
 	mul $t3, $t1, $t3	#if minor: t3 stores m decimal val, else 0
 	add $t4, $t4, $t3	#add this val into t4: holds adjusted key val now
-	
-	#should collect time signature info here
-
 	j setkey
+	
+readkey: #secondary read: tempo already set
+	li $t0, 'K'		#K
+	move $t1, $v0
+	beq $t1, $t0, k	#if encountered k value
+	jal readchar	#else readchar
+	j readkey
+	k:
+	jal readchar
+	li $t0, ':'		#:
+	move $t1, $v0
+	bne $t0, $t1, readkey	#if found K, not K:, keep looking
+	##in key section K:
+	jal readchar #should contain char code for key. check for space 
+	move $t4, $v0 #t4 holds key code
+	jal readchar 	#finish reading key
+	move $t1, $v0
+	li $t0, 'm' #'m'
+	seq $t3, $t2, $t1 	#t3 contains if minor or not
+	mul $t3, $t1, $t3	#if minor: t3 stores m decimal val, else 0
+	add $t4, $t4, $t3	#add this val into t4: holds adjusted key val now
+	j setkey
+
+
+tempo: #initial read
+	jal readchar			#after reading L, read next char
+	li $t0, ':'			#:
+	move $t1, $v0
+	bne $t1, $t0, readheader	#if we just encountered an L, not L: as in the key code, keep looking: 58
+	
+	#at this point we are in the tempo code section: encountered L:
+	jal readchar #should contain 1
+	move $t1, $v0 #t1 holds first tempo #
+	jal readchar 	#if contains /, else t = 1
+	move $t2, $v0
+	li $t0, '/' #'/'
+	bne $t0, $t2, settempo #if there's no /, tempo is simply '1': held in t1
+	add $t1, $t2, $t1	#update tempo value with /
+	jal readchar		#next val must be a number
+	move $t2, $v0
+	add $t1, $t2, $t1	#update tempo code with next number
+	jal readchar		#check if there's a second final following number
+	move $t2, $v0
+	li $t3, 9		#make sure number
+	bgt $t2, $t3, settempo	#if not a number, set tempo
+	add $t1, $t2, $t1	#if a number, add to tempo val
+	j settempo		#tempo val completed: go to settempo
+	
+
+readtempo: #secondary read: key already set
+	jal readchar
+	move $t1, $v0 
+	li $t0, 'L'		#L
+	bne $t0, $t1, readtempo
+	jal readchar
+	move $t1, $v0
+	li $t0, ':'		#:
+	bne $t0, $t1, readtempo #if just L, not L:
+	jal readchar 	#in L: block, should contain 1
+	move $t1, $v0 #t1 holds first tempo #
+	jal readchar 	#if contains /, else t = 1
+	move $t2, $v0
+	li $t0, '/' #'/'
+	bne $t0, $t2, settempo #if there's no /, tempo is simply '1': held in t1
+	add $t1, $t2, $t1	#update tempo value with /
+	jal readchar		#next val must be a number
+	move $t2, $v0
+	add $t1, $t2, $t1	#update tempo code with next number
+	jal readchar		#check if there's a second final following number
+	move $t2, $v0
+	li $t3, 9		#make sure number
+	bgt $t2, $t3, settempo	#if not a number, set tempo
+	add $t1, $t2, $t1	#if a number, add to tempo val
+	j settempo		#tempo val completed: go to settempo
+
+settempo:	#tempo code held in t1
+	#####################back up one position in readchar
+	li $t0, 1
+	beq $t1, $t0, full
+	li $t0, 49
+	beq $t1, $t0, full
+	li $t0, 50
+	beq $t1, $t0, half
+	li $t0, 52
+	beq $t1, $t0, quarter
+	li $t0, 56
+	beq $t1, $t0, eighth
+	li $t0, 64
+	beq $t1, $t0, sixteenth
+	li $t0, 80
+	beq $t1, $t0, thirtysecondth
+	full:
+	li $t0, 1000
+	move $s2, $t0
+	j checkk
+	half:
+	li $t0, 500
+	move $s2, $t0
+	j checkk
+	quarter:
+	li $t0, 250
+	move $s2, $t0
+	j checkk
+	eighth:
+	li $t0, 125
+	move $s2, $t0
+	j checkk
+	sixteenth:
+	li $t0, 62
+	move $s2, $t0
+	j checkk
+	thirtysecondth: 
+	li $t0, 31
+	move $s2, $t0
+	j checkk
 	
 #sharps		sum of symbols	ABCDEFG
 #C/Am:		67,174		00000001 
@@ -236,61 +350,68 @@ setkey: #t4 contains keycode, set s1 based on value
 	beq $t4, $t0, Cb
 	#sharps
 	C: 
-	addi $s1, $zero, 0x00000000
-	j readthrough
+	addi $s1, $zero, 0x00000001
+	j checkt
 	G: 
 	addi $s1, $zero, 0x00000101
-	j readthrough
+	j checkt
 	D:
 	addi $s1, $zero, 0x00100101
-	j readthrough
+	j checkt
 	A:
 	addi $s1, $zero, 0x00100111
-	j readthrough
+	j checkt
 	E:
 	addi $s1, $zero, 0x00110111
-	j readthrough
+	j checkt
 	B:
 	addi $s1, $zero, 0x10110111
-	j readthrough
+	j checkt
 	Fs:
 	addi $s1, $zero, 0x10111111
-	j readthrough
+	j checkt
 	Cs:
 	addi $s1, $zero, 0x11111111
-	j readthrough
+	j checkt
 	
 	#flats
 	F:
 	addi $s1, $zero, 0x01000000
-	j readthrough
+	j checkt
 	Bb:
 	addi $s1, $zero, 0x01001000
-	j readthrough
+	j checkt
 	Eb:
 	addi $s1, $zero, 0x11001000
-	j readthrough
+	j checkt
 	Ab:
 	addi $s1, $zero, 0x11011000
-	j readthrough
+	j checkt
 	Db:
 	addi $s1, $zero, 0x11011010
-	j readthrough
+	j checkt
 	Gb:
 	addi $s1, $zero, 0x11111010
-	j readthrough
+	j checkt
 	Cb:
 	addi $s1, $zero, 0x11111110
+	j checkt
+
+checkt:
+	beq $s2, $zero, readtempo	#if tempo hasn't been set yet
+	j readthrough
+
+checkk:
+	beq $s1, $zero, readkey		#if key isn't set yet
 	j readthrough
 	
 	
-readthrough:
-	li $t0, 124 #'|'
-	jal readchar 	
-	lb $t1, 0($a0)
-	bne $t0, $t1, readthrough #break & continue after reaching |
-	j playnotes #fix so that links aren't broken
-	#jr $ra
+readthrough:	#read until pipe, symbolizing start of music
+	move $t1, $v0	#load read char
+	li $t0, '|' #'|'
+	beq $t1, $t0, playnotes	# if hit '|', start reading music	################CHANGE IF YOU CHANGE NOTE-PLAYING BRANCH NAMES
+	jal readchar 
+	j readthrough	
 
 
 # Quick and dirty way to print value after readchar
