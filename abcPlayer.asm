@@ -1,41 +1,31 @@
 # MIPS ABC Player
-# Signify start of program.
 .text	
 .globl	main
 main:
 
+	# Allocate space for the note queue
 	jal allocnotequeue
-	jal openfile	# open the file
-	jal readheader	# encodes the key, gets readchar ready to read the first note.
-	jal playnotes 	# loops until a '|' is found. then breaks.
-
+	# Opens the ABC file
+	jal openfile
+	# Read the information in the header.
+	jal readheader	
+	# Put the notes in a queue and play them
+	jal playnotes 
 
 # SAVED REGISTER DEFINITIONS
-# s0 
-# This is the address, or file descriptor, of the loaded abc file. 
+# s0 : the address, or file descriptor, of the loaded abc file. 
 
-# s1 
-# This is the list of sharps and flats. You determine this by reading K: in the file. We will support the keys of A-G and A-G minor.
-# Do not consider other modes. The job will be to convert the key into a list of sharps and flats.
-# Here is my suggestion. Use this encoding:
-# MIPS BIT # ...  7  6  5  4  3  2  1  0
+# s1 : key encoding
+# bit # ........  7  6  5  4  3  2  1  0
 # MEANING ......  A  B  C  D  E  F  G  SHARP?
-# So for each key, A thru G including minors, get the notes in the key that are sharp or flat and flip the appropriate bits.
-# Here is a good website to quickly find this information. http://www.playpiano.com/wordpress/flats-sharps/flats-sharps
-# For Example, the key of A has 3 sharps, and they are F C G.
-# So Encode $s1 as 0 0 1 0 0 1 1 1
-# Another Example, D flat major. B E A D G all flat.
-# So Encode $s1 as 1 1 0 1 1 0 1 0
 
 # s2 is the base note length. It is denoted by L: in the file. 
-# convert to milliseconds please.
-
 # s3 is the memory start
 # s4 is the memory pointer
 # s5 is the note count
 
 allocnotequeue:
-	# 
+	# allocate a bunch of bytes
 	li $a0, 100000
 	li $v0, 9
 	syscall
@@ -43,10 +33,8 @@ allocnotequeue:
 	move $s4, $v0
 	li $s5, 0
 	jr $ra
-# s7 is used to save a note length when we read rhythms. do not bother with right now.
 
 # Opens ABC file specified by user.
-# REGISTER OUTPUTS file descriptior at $s0
 openfile:
 	
 	# Ask for file name
@@ -60,10 +48,9 @@ openfile:
     	li $a1, 21
     	syscall
     	
-    	# Don't know how this works but it does. Converts file input to something the machine can read.
-    	# Shamelessly stolen from google
-   	li $t0, 0       #loop counter
-    	li $t1, 21      #loop end
+    	# Converts file input to something the machine can read.
+   	li $t0, 0       
+    	li $t1, 21    
 	clean:
     	beq $t0, $t1, L5
     	lb $t3, file($t0)
@@ -92,9 +79,7 @@ err:
     	j exit
     	
 
-# Reads a character from the file. The char is output in $v0. As a shortcut, this char be accessed as an int by using
-#	li $t0, 0
-#	lbu $t0, buffer($t0)
+# Reads a character from the file.
 readchar:
 	li	$v0, 14		# Read File Syscall
 	move	$a0, $s0	# Load File Descriptor
@@ -106,13 +91,9 @@ readchar:
 	lbu $v0, buffer($t0)
 	jr $ra 
 
-# REGISTER INPUTS file desciptor at $s0
-# REGISTER OUTPUTS Key encoding at $s1
-# TODO Larissa
+# Extract data from header such as tempo and note length
 readheader:
-	# Use readchar and extract the key from the header. It is denoted by K:
-	# Encode the header into $s1 using the method described above.
-	# When the header ends and the notes start, (singified by |) end the routine.
+
 	jal readchar		#Read character
 	move $t1, $v0
 	li $t0, 'K'			#K
@@ -409,33 +390,20 @@ checkk:
 readthrough:	#read until pipe, symbolizing start of music
 	move $t1, $v0	#load read char
 	li $t0, '|' #'|'
-	beq $t1, $t0, playnotes	# if hit '|', start reading music	################CHANGE IF YOU CHANGE NOTE-PLAYING BRANCH NAMES
+	beq $t1, $t0, playnotes	# if hit '|', start reading music	
 	jal readchar 
 	j readthrough	
-
-
-# Quick and dirty way to print value after readchar
-qprint:
-	# Print Data
-	li	$v0, 4		# Print String Syscall
-	la	$a0, cont	# Load Contents String
-	syscall
-	jr $ra
 		
 # Closes the file
-# REGISTER INPUTS file descriptor at $s0
-# REGISTER OUTPUTS none
 closefile:
 	li	$v0, 16		# Close File Syscall
 	move	$a0, $s0	# Load File Descriptor
 	syscall
 	jr $ra  
 
-# REGISTER INPUTS none
-# REGISTER OUTPUTS none
+# Parses through notes, adding them to a queue and playing them all at the end.
 playnotes:
 
-	#ignore for now.
 	noteplayed:
 
 	jal readchar
@@ -475,7 +443,7 @@ playnotes:
 	li $t1, 'G'
 	beq $t0, $t1, hiG
 
-	#TODO throw error, don't skip space
+	# Not a note? Simply skip it!
 	j noteplayed
 		
 	lowA:
@@ -536,12 +504,8 @@ playnotes:
 	jal playnote
 	j noteplayed
 	
-# REGISTER INPUTS $a0 ID
-# REGISTER OUTPUTS none
-# TODO William play the right note based the pitch and key. Eventually add length too.
+# Converts a note based on the key and adds it to the queue.
 playnote:
-	# a0 is the midi note name
-	# s1 is the enconding (A-G) (S-BIT)
 
 	# t0 will hold the sharp/flat bit.
 	andi $t0, $s1, 1 	
@@ -605,7 +569,7 @@ playnote:
 	# did we get zero? then no note change! jump!
 	beqz $t6, playnotewkey		
 	
-	# The key hit us!! flat or not?
+	# The key affected us!! flat or not?
 	beqz $t0, flatmode
 	
 	addi $a0, $a0, 1
@@ -615,17 +579,14 @@ playnote:
 	subi $a0, $a0, 1
 	j playnotewkey
 	
-	
-	
-	#TODO - Store note, not play it
+	# This acutally stores the note
 	playnotewkey:
 
-
-	# Note Storage.
 	# Note name
 	sw  $a0, ($s4)
 	add $s4, $s4, 4
-	# Note Duration
+	
+	# Note Duration - Not implemented because tempo isn't
 	li  $a1, 300
 	sw  $a1, ($s4)
 	add $s4, $s4, 4
@@ -634,6 +595,7 @@ playnote:
     	
 	jr $ra 
 	
+#play all notes in queue
 playallqueue:
 	move $t0, $a0  #temp register $t0, note pointer
 	move $t3, $a1  #length of note list
@@ -657,9 +619,7 @@ playallqueue:
 	end:	
 		jr $ra 
 	
-# Quits the progam.
-# REGISTER INPUTS none
-# REGISTER OUTPUTS none
+# Quits the progam, but plays all notes in queue first.
 exit:
 	jal closefile
 	
@@ -670,12 +630,11 @@ exit:
 	li	$v0,10	
 	syscall
 
-# Start .data segment (data!)
+
 	.data
 file:	.asciiz	"sample.txt"
 fileerr:.asciiz	"File not found"
 plzenter:.asciiz	"Enter the name of the ABC file \n"
-#file:	.asciiz ""
 cont: 	.ascii "\nqprint : " 
 buffer: .space 1024 
 newline:.asciiz	"\n"
